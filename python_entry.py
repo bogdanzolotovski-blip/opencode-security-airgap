@@ -10,7 +10,16 @@ cfg = json.loads((root / "installation.json").read_text())
 target = cfg["environments"]["playwright"]["target"]
 if target:
     sys.path.insert(0, target)
+sys.executable = str(root / "bin/python3")
 args = sys.argv[1:]
+while args and args[0] in ("-u", "-B", "-s", "-E", "-I"):
+    flag = args.pop(0)
+    if flag == "-B":
+        sys.dont_write_bytecode = True
+    if flag == "-u":
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(write_through=True)
 if not args:
     import code
     code.interact()
@@ -29,9 +38,6 @@ elif args[0] == "-":
     sys.path.insert(0, os.getcwd())
     exec(compile(sys.stdin.read(), "<stdin>", "exec"), {"__name__": "__main__"})
 else:
-    # Common interpreter switches used by audit scripts.
-    while args and args[0] in ("-u", "-B", "-s", "-E", "-I"):
-        args.pop(0)
     if not args or args[0].startswith("-"):
         raise SystemExit("Unsupported Python switch in target fallback; use a Python with venv")
     sys.argv = args

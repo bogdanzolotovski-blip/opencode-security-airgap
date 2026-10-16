@@ -63,6 +63,8 @@ jobs:
           chmod 777 test-results
           docker run --rm --network none --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
             --shm-size=1g -v "$PWD:/src:ro" -v "$PWD/test-results:/results" security-tools-clean
+      - name: Finalize checksums after successful offline tests
+        run: python3 scripts/finalize_release.py
       - name: Upload downloadable artifacts (also on test failure)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
