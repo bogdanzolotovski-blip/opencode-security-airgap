@@ -120,6 +120,8 @@ def runtime_libraries(payload):
                 if stream.read(4) == b"\x7fELF":
                     pending.append(path)
     pending += list(Path("/usr/lib/x86_64-linux-gnu").glob("libudev.so.1"))
+    pending += list(Path("/usr/lib/x86_64-linux-gnu").glob("libgmp.so.10"))
+    pending += list((payload / "native").glob("git"))
     copied = set()
     owners = set()
     while pending:
@@ -240,6 +242,15 @@ def main():
         resolved[tool] = wheels(payload, tool, reqs)
     native("gitleaks/gitleaks", "gitleaks", lock["gitleaks"], "x64", payload, work)
     native("anchore/grype", "grype", lock["grype"], "amd64", payload, work)
+    git = Path("/usr/bin/git")
+    if not git.exists():
+        raise RuntimeError("Builder must include Debian git for offline history scans")
+    shutil.copy2(git, payload / "native/git")
+    (payload / "licenses/git").mkdir()
+    shutil.copy2("/usr/share/doc/git/copyright", payload / "licenses/git/copyright")
+    gitversion = subprocess.check_output(["dpkg-query", "-W", "-f=${Version}", "git"], text=True)
+    ORIGINS.append({"file": "native/git", "source": "Debian signed apt repository / official Python Trixie image",
+                    "version": gitversion, "sha256": sha256(git)})
     (payload / "data").mkdir()
     database = prepare_db(payload / "native/grype", payload / "data", download)
     # Install browser driver in a disposable build venv, never transfer this venv.
@@ -262,6 +273,12 @@ def main():
     browserinfo = json.loads(registry.read_text())
     shutil.copy2(registry, payload / "browsers-version.json")
     packages = runtime_libraries(payload)
+    fontdir = Path("/usr/share/fonts/truetype/dejavu")
+    if fontdir.exists():
+        normalized_copy(fontdir, payload / "runtime/fonts")
+        notice = Path("/usr/share/doc/fonts-dejavu-core/copyright")
+        if notice.exists():
+            shutil.copy2(notice, payload / "licenses/dejavu-fonts-copyright")
     metadata = {"kind": "main", "architecture": args.architecture, "python_version": args.python_version,
                 "debian": "13", "built_at": datetime.now(timezone.utc).isoformat(),
                 "versions": lock, "resolved_wheels": resolved, "browser_versions": browserinfo,

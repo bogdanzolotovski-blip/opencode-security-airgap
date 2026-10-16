@@ -83,11 +83,15 @@ def install(args):
         for tool in ("semgrep", "checkov", "playwright"):
             config["environments"][tool] = pip_install(generation, payload, tool, args.force_target)
         (generation / "installation.json").write_text(json.dumps(config, indent=2))
+        from xml.sax.saxutils import escape
+        (generation / "fontconfig.xml").write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"><fontconfig><dir>' +
+            escape(str(payload / "runtime/fonts")) + '</dir><cachedir>' +
+            escape(str(generation / "fontcache")) + '</cachedir></fontconfig>')
         shutil.copy2(payload / "launcher.py", generation / "launcher.py")
         shutil.copy2(payload / "python_entry.py", generation / "python_entry.py")
         bindir = generation / "bin"
         bindir.mkdir()
-        for tool in ("semgrep", "checkov", "gitleaks", "grype", "python3", "playwright", "zap"):
+        for tool in ("semgrep", "checkov", "gitleaks", "grype", "git", "python3", "playwright", "zap"):
             wrapper = bindir / tool
             wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(config["base_python"]) + " -I " +
                                shlex.quote(str(generation / "launcher.py")) + " " + tool + ' "$@"\n')

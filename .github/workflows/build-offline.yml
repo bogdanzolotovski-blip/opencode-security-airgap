@@ -51,18 +51,18 @@ jobs:
           python3 scripts/verify_bundle.py dist/security-tools-debian13-amd64.tar.gz
           python3 -m unittest discover -s tests -p test_installer.py -v
       - name: Build clean Debian test image
-        run: docker build -f tests/Dockerfile -t security-tools-clean .
-      - name: Rootless offline installation, browser, scanners and reinstall
         if: inputs.python_version == '3.13'
+        run: docker build -f tests/Dockerfile -t security-tools-clean .
+      - name: Build matching alternate Python test image on Debian Trixie
+        if: inputs.python_version != '3.13'
+        env:
+          PYVER: ${{ inputs.python_version }}
+        run: docker build --build-arg "PYTHON_VERSION=$PYVER" -f tests/Dockerfile.alternate -t security-tools-clean .
+      - name: Rootless offline installation, browser, scanners and reinstall
         run: |
           chmod 777 test-results
           docker run --rm --network none --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
             --shm-size=1g -v "$PWD:/src:ro" -v "$PWD/test-results:/results" security-tools-clean
-      - name: Reject untested alternate interpreter release
-        if: inputs.python_version != '3.13'
-        run: |
-          echo 'Wheels built; alternate Python requires a matching clean Debian test image before publishing.'
-          exit 1
       - name: Upload downloadable artifacts (also on test failure)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

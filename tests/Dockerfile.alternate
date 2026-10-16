@@ -1,0 +1,13 @@
+ARG PYTHON_VERSION=3.12
+FROM python:${PYTHON_VERSION}-trixie
+RUN python3 -m pip uninstall -y pip \
+    && printf 'int f(void){return 0;}\n' >/tmp/missing.c \
+    && gcc -shared -fPIC /tmp/missing.c -Wl,-soname,libairgapmissing.so -o /tmp/libairgapmissing.so \
+    && printf 'extern int f(void); int main(void){return f();}\n' >/tmp/main.c \
+    && gcc /tmp/main.c -L/tmp -lairgapmissing -o /opt/missing-so-fixture \
+    && rm /tmp/libairgapmissing.so /tmp/missing.c /tmp/main.c \
+    && useradd -m -u 1000 tester
+ENV HOME=/home/tester PYTHONDONTWRITEBYTECODE=1
+USER tester
+WORKDIR /src
+CMD ["python3", "/src/tests/offline_smoke.py"]

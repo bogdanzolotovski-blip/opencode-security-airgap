@@ -20,9 +20,11 @@ def run(command, expected=(0,), env=None, timeout=240):
 def verify(root, browser=True):
     root = Path(root).resolve()
     binaries = root / "bin"
+    locked = json.loads((root / "payload/versions.lock.json").read_text())
     for tool, flag in (("semgrep", "--version"), ("checkov", "--version"),
                        ("gitleaks", "version"), ("grype", "version"), ("playwright", "--version")):
         result = run([binaries / tool, flag])
+        assert locked[tool] in result.stdout + result.stderr, "Wrong version: " + tool
         print(tool + ": " + (result.stdout or result.stderr).strip()[:300])
     with tempfile.TemporaryDirectory(prefix="airgap-fixtures-") as temp:
         fixture = Path(temp)
@@ -38,6 +40,15 @@ def verify(root, browser=True):
         result = run([binaries / "gitleaks", "dir", str(fixture), "--no-banner",
                       "--report-format", "json", "--report-path", str(fixture / "secrets.json")], expected=(0, 1))
         assert json.loads((fixture / "secrets.json").read_text()), "Gitleaks did not find synthetic secret"
+        run([binaries / "git", "init", str(fixture)])
+        run([binaries / "git", "-C", fixture, "add", "synthetic.txt"])
+        run([binaries / "git", "-C", fixture, "-c", "user.name=Airgap Test", "-c", "user.email=test@example.invalid",
+             "commit", "-m", "synthetic fixture"])
+        env = os.environ.copy()
+        env["PATH"] = str(binaries) + os.pathsep + env.get("PATH", "")
+        run([binaries / "gitleaks", "git", str(fixture), "--no-banner", "--report-format", "json",
+             "--report-path", str(fixture / "history.json")], expected=(1,), env=env)
+        assert json.loads((fixture / "history.json").read_text()), "Git-history scan did not find fixture"
         dbarchive = next((root / "payload/data").glob("grype-db.tar.*"))
         run([binaries / "grype", "db", "import", dbarchive], timeout=300)
         run([binaries / "grype", "db", "status"])

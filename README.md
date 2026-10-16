@@ -24,14 +24,18 @@ revisions; optional ZAP + Temurin JRE 21 with the distribution's included addons
 The small authored Semgrep ruleset is **not full OWASP coverage**. Additional vetted
 local rules can be passed via `semgrep --config /path/to/rules`. Checkov does not
 download Terraform modules and skips frameworks requiring other runtimes/cloud
-services. Git-history scans require an existing Git executable. Git is not installed
-by this toolkit; filesystem Gitleaks scans work independently.
+services. A Debian Git binary and its runtime libraries support local history scans;
+the wrapper permits only the file transport, not remote Git downloads.
 
 ## Build
 
 GitHub Actions → Build and verify offline security tools → Run workflow.
 Inputs: Python version, amd64 architecture, optional ZAP. amd64 is the only validated
 architecture; unsupported architectures are rejected instead of mislabeled.
+Alternate Python inputs use the matching official CPython/Trixie test image with
+pip removed; only 3.13 uses Debian's distribution Python in the minimal test image.
+If a pinned dependency has no compatible wheel, that build fails instead of building
+an unreviewed sdist or publishing an incompatible artifact.
 Top-level versions are pinned in `versions.lock.json`. Every build records the exact
 transitive wheel versions/hashes, Debian runtime versions, browser revisions, DB
 metadata and source URLs in `resolved-versions.lock.json` and the archive manifest.

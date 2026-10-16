@@ -31,7 +31,9 @@ env.update({
 })
 if tool in ("semgrep", "checkov"):
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
-if tool in ("gitleaks", "grype"):
+if tool in ("gitleaks", "grype", "git"):
+    env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
+    env["GIT_ALLOW_PROTOCOL"] = "file"
     if tool == "grype" and args and args[0] not in ("version", "--version", "help", "--help", "db", "config", "completion"):
         if not any(a.startswith(("dir:", "sbom:", "file:")) or Path(a).exists() for a in args if not a.startswith("-")):
             raise SystemExit("Offline Grype: use dir:/path or sbom:/path; remote image lookup is disabled by policy")
@@ -50,6 +52,7 @@ group = "playwright" if tool == "python3" else tool
 spec = cfg["environments"][group]
 if group == "playwright":
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
+    env["FONTCONFIG_FILE"] = str(root / "fontconfig.xml")
 if tool == "python3":
     os.execve(spec["python"], [spec["python"], "-I", str(root / "python_entry.py")] + args, env)
 if os.environ.get("AIRGAP_TOOL_CHILD") != group:
