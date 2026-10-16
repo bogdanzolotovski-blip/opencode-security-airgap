@@ -1,0 +1,57 @@
+rules:
+  - id: airgap.python.eval-input
+    languages: [python]
+    message: Untrusted input evaluated as Python code; review data flow.
+    severity: ERROR
+    pattern: eval(input(...))
+    metadata:
+      cwe: ["CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code"]
+      owasp: ["A03:2021 - Injection"]
+      license: MIT
+  - id: airgap.python.shell-true
+    languages: [python]
+    message: Shell execution enabled; review interpolation and input validation.
+    severity: WARNING
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+    metadata:
+      cwe: ["CWE-78: OS Command Injection"]
+      owasp: ["A03:2021 - Injection"]
+      license: MIT
+  - id: airgap.python.yaml-unsafe
+    languages: [python]
+    message: Unsafe YAML loader can instantiate arbitrary objects.
+    severity: ERROR
+    pattern: yaml.load($DATA, Loader=yaml.Loader)
+    metadata:
+      cwe: ["CWE-502: Deserialization of Untrusted Data"]
+      owasp: ["A08:2021 - Software and Data Integrity Failures"]
+      license: MIT
+  - id: airgap.javascript.eval
+    languages: [javascript, typescript]
+    message: Dynamic code execution; review untrusted inputs.
+    severity: WARNING
+    pattern: eval($X)
+    metadata:
+      cwe: ["CWE-95: Eval Injection"]
+      owasp: ["A03:2021 - Injection"]
+      license: MIT
+  - id: airgap.go.insecure-tls
+    languages: [go]
+    message: TLS peer verification disabled.
+    severity: ERROR
+    pattern: "tls.Config{..., InsecureSkipVerify: true, ...}"
+    metadata:
+      cwe: ["CWE-295: Improper Certificate Validation"]
+      owasp: ["A07:2021 - Identification and Authentication Failures"]
+      license: MIT
+  - id: airgap.java.weak-digest
+    languages: [java]
+    message: Weak digest algorithm; review cryptographic use.
+    severity: WARNING
+    pattern-either:
+      - pattern: MessageDigest.getInstance("MD5")
+      - pattern: MessageDigest.getInstance("SHA-1")
+    metadata:
+      cwe: ["CWE-328: Use of Weak Hash"]
+      owasp: ["A02:2021 - Cryptographic Failures"]
+      license: MIT

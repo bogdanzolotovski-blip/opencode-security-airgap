@@ -1,0 +1,5 @@
+check-for-app-update: false
+db:
+  auto-update: false
+  validate-age: false
+  require-update-check: false

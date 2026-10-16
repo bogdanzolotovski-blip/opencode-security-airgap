@@ -1,0 +1,84 @@
+name: Build and verify offline security tools
+on:
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: Python major.minor matching the target interpreter
+        default: '3.13'
+        required: true
+        type: choice
+        options: ['3.13', '3.12', '3.14']
+      architecture:
+        description: Validated architecture (other architectures intentionally rejected)
+        type: choice
+        options: ['amd64']
+        default: 'amd64'
+      include_zap:
+        description: Build optional ZAP + portable Java archive
+        type: boolean
+        default: true
+permissions:
+  contents: write
+concurrency:
+  group: offline-bundle-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate requested Python
+        env:
+          PYVER: ${{ inputs.python_version }}
+        run: |
+          case "$PYVER" in 3.12|3.13|3.14) ;; *) exit 1;; esac
+          mkdir -p dist test-results
+      - name: Build in Debian Trixie
+        env:
+          PYVER: ${{ inputs.python_version }}
+          ARCH: ${{ inputs.architecture }}
+          INCLUDE_ZAP: ${{ inputs.include_zap }}
+        run: |
+          docker pull "python:${PYVER}-trixie"
+          docker image inspect "python:${PYVER}-trixie" --format '{{json .RepoDigests}}' > dist/build-image.json
+          ZAP_FLAG=""
+          if [ "$INCLUDE_ZAP" = true ]; then ZAP_FLAG=--include-zap; fi
+          docker run --rm -v "$PWD:/src" -w /src "python:${PYVER}-trixie" \
+            python scripts/prepare_bundle.py --python-version "$PYVER" --architecture "$ARCH" $ZAP_FLAG
+      - name: Check archive and negative tests
+        run: |
+          python3 scripts/verify_bundle.py dist/security-tools-debian13-amd64.tar.gz
+          python3 -m unittest discover -s tests -p test_installer.py -v
+      - name: Build clean Debian test image
+        run: docker build -f tests/Dockerfile -t security-tools-clean .
+      - name: Rootless offline installation, browser, scanners and reinstall
+        if: inputs.python_version == '3.13'
+        run: |
+          chmod 777 test-results
+          docker run --rm --network none --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+            --shm-size=1g -v "$PWD:/src:ro" -v "$PWD/test-results:/results" security-tools-clean
+      - name: Reject untested alternate interpreter release
+        if: inputs.python_version != '3.13'
+        run: |
+          echo 'Wheels built; alternate Python requires a matching clean Debian test image before publishing.'
+          exit 1
+      - name: Upload downloadable artifacts (also on test failure)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: security-tools-debian13-${{ inputs.architecture }}-py${{ inputs.python_version }}
+          path: |
+            dist/
+            test-results/
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: warn
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="bundle-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$TAG" dist/* test-results/offline-test.json \
+            --title "Debian 13 amd64 / Python ${{ inputs.python_version }} offline security tools" \
+            --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA"

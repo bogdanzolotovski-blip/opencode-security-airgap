@@ -1,0 +1,10 @@
+build/
+dist/
+__pycache__/
+*.pyc
+.venv/
+test-results/
+*.tar.gz
+*.whl
+*.deb
+

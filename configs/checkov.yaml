@@ -1,0 +1,9 @@
+skip-download: true
+download-external-modules: false
+skip-framework:
+  - sca_package
+  - sca_image
+  - secrets
+  - bicep
+  - helm
+  - kustomize

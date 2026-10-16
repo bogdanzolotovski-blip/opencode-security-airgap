@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "debian": "trixie",
+  "python": "3.13",
+  "architecture": "amd64",
+  "semgrep": "1.181.0",
+  "checkov": "3.3.29",
+  "playwright": "1.64.0",
+  "pip": "26.2.1",
+  "gitleaks": "8.30.1",
+  "grype": "0.120.1",
+  "zap": "2.17.0",
+  "java_major": 21
+}
