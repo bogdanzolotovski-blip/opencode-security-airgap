@@ -83,6 +83,7 @@ jobs:
         run: python3 scripts/finalize_release.py
       - name: Upload downloadable artifacts (also on test failure)
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: security-tools-debian13-${{ inputs.architecture }}-py${{ inputs.python_version }}
