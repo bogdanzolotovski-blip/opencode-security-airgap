@@ -184,7 +184,8 @@ def zap_bundle(lock, args, dist, work):
     # Trusted/checksummed upstream tar extracted only into disposable build tree.
     zaptemp = work / "zap-extract"
     zaptemp.mkdir()
-    subprocess.run(["tar", "-xzf", str(zaparchive), "-C", str(zaptemp), "--no-same-owner"], check=True)
+    with tarfile.open(zaparchive) as tar:
+        tar.extractall(zaptemp, filter="data")
     normalized_copy(next(zaptemp.iterdir()), payload / "zap")
     java = api("https://api.adoptium.net/v3/assets/latest/" + str(lock["java_major"]) +
                "/hotspot?architecture=x64&image_type=jre&os=linux&vendor=eclipse")[0]
@@ -193,7 +194,8 @@ def zap_bundle(lock, args, dist, work):
     download(pkg["link"], jarchive, pkg["checksum"])
     jtemp = work / "java-extract"
     jtemp.mkdir()
-    subprocess.run(["tar", "-xzf", str(jarchive), "-C", str(jtemp), "--no-same-owner"], check=True)
+    with tarfile.open(jarchive) as tar:
+        tar.extractall(jtemp, filter="data")
     normalized_copy(next(jtemp.iterdir()), payload / "java")
     addons = sorted(p.name for p in (payload / "zap/plugin").glob("*.zap"))
     if not addons:
@@ -213,6 +215,8 @@ def main():
     if "%d.%d" % sys.version_info[:2] != args.python_version:
         raise RuntimeError("Builder Python must match python_version input")
     lock = json.loads((ROOT / "versions.lock.json").read_text())
+    lock["python"] = args.python_version
+    lock["architecture"] = args.architecture
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     work = ROOT / "build"
@@ -226,6 +230,7 @@ def main():
     for name in ("launcher.py", "python_entry.py", "verify_tools.py", "diagnose_browser.py", "test_security_audit.py",
                  "activate.sh", "run-opencode.sh", "LICENSE", "versions.lock.json"):
         shutil.copy2(ROOT / name, payload / name)
+    (payload / "versions.lock.json").write_text(json.dumps(lock, indent=2) + "\n")
     (payload / "bootstrap").mkdir()
     subprocess.run([sys.executable, "-m", "pip", "download", "--index-url", "https://pypi.org/simple",
                     "--only-binary=:all:", "--no-deps", "-d", str(payload / "bootstrap"), "pip==" + lock["pip"]], check=True)

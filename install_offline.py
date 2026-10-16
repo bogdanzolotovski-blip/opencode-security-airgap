@@ -147,7 +147,7 @@ def install_zap(prefix, generation, payload, manifest):
     subprocess.run([str(java), "-version"], env=env, check=True)
     zap = payload / "zap/zap.sh"
     env["PATH"] = str(java.parent) + os.pathsep + env.get("PATH", "")
-    subprocess.run([str(zap), "-version"], env=env, check=True, timeout=120)
+    subprocess.run([str(zap), "-dir", str(prefix / "zap-state"), "-version"], env=env, check=True, timeout=120)
     # ZAP generation lives outside releases cleanup and is swapped atomically.
     final = prefix / "zap-releases" / generation.name
     final.parent.mkdir(exist_ok=True)

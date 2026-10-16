@@ -47,8 +47,9 @@ def diagnose(root=None, extra_binary=None):
                 context.route("https://**/*", lambda route: route.abort())
                 page = context.new_page()
                 page.goto(pagefile.as_uri())
-                assert page.title() == "airgap-ok"
-                assert page.locator("#ok").inner_text() == "local-only"
+                assert page.title() == "airgap-ok", "Unexpected local page title: " + repr(page.title())
+                visible = page.locator("#ok").inner_text()
+                assert visible == "local-only", "Local page rendered text differs from fixture: " + repr(visible)
                 print(label + ": local render OK, browser=" + browser.version)
                 browser.close()
     return {"browsers": [str(p) for p in candidates], "missing": []}
@@ -62,6 +63,9 @@ if __name__ == "__main__":
     try:
         diagnose(args.root, args.extra_binary)
     except Exception as error:
-        print("BROWSER FAILED:", error, file=sys.stderr)
-        print("If sandbox namespaces are denied by LXC/AppArmor, ask the Proxmox administrator for a suitable container policy or VM. No --no-sandbox workaround is enabled.", file=sys.stderr)
+        print("BROWSER FAILED:", type(error).__name__, str(error), file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        if "sandbox" in str(error).lower() or "namespace" in str(error).lower():
+            print("If sandbox namespaces are denied by LXC/AppArmor, ask the Proxmox administrator for a suitable container policy or VM. No --no-sandbox workaround is enabled.", file=sys.stderr)
         sys.exit(1)
