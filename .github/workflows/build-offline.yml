@@ -60,6 +60,14 @@ jobs:
         run: docker build --build-arg "PYTHON_VERSION=$PYVER" -f tests/Dockerfile.alternate -t security-tools-clean .
       - name: Rootless offline installation, browser, scanners and reinstall
         run: |
+          # CI host only: allow the browser's own user-namespace sandbox.
+          # Never change these sysctls in the target-side installer.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          if [ -e /proc/sys/kernel/unprivileged_userns_clone ]; then
+            sudo sysctl -w kernel.unprivileged_userns_clone=1
+          fi
           chmod 777 test-results
           docker run --rm --network none --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
             --shm-size=1g -v "$PWD:/src:ro" -v "$PWD/test-results:/results" security-tools-clean

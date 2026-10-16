@@ -22,10 +22,14 @@ subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "/src/tests"
 command = [sys.executable, str(ROOT / "install_offline.py"), "--bundle", str(BUNDLE)]
 subprocess.run(command, check=True)
 before = (PREFIX / "current").resolve()
+first_modes = json.loads((before / "installation.json").read_text())["environments"]
+assert all(value["target"] is None for value in first_modes.values()), "Normal venv path was not exercised"
 # Reinstall through forced isolated --target fallback, retaining prior generation.
 subprocess.run(command + ["--force-target"], check=True)
 assert before.exists()
 assert (PREFIX / "current").resolve() != before
+second_modes = json.loads((PREFIX / "current/installation.json").read_text())["environments"]
+assert all(value["target"] is not None for value in second_modes.values()), "pip-target fallback was not exercised"
 env = os.environ.copy()
 env["PATH"] = str(PREFIX / "bin") + os.pathsep + env["PATH"]
 python = PREFIX / "bin/python3"

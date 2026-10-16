@@ -20,6 +20,9 @@ def check_platform(manifest):
         raise ValueError("This bundle requires Linux x86_64/amd64")
     if manifest["architecture"] != "amd64":
         raise ValueError("Bundle architecture is not amd64")
+    import sysconfig
+    if platform.python_implementation() != "CPython" or sysconfig.get_config_var("Py_GIL_DISABLED"):
+        raise ValueError("Requires standard CPython (not PyPy or a free-threaded build)")
     actual = "%d.%d" % sys.version_info[:2]
     if actual != manifest["python_version"]:
         raise ValueError("Python mismatch: bundle=" + manifest["python_version"] +
@@ -27,6 +30,13 @@ def check_platform(manifest):
     release = platform.freedesktop_os_release()
     if release.get("ID") != "debian" or release.get("VERSION_ID", "").split(".")[0] != "13":
         raise ValueError("Supported target: Debian 13 (Trixie)")
+    import importlib
+    for module in ("ssl", "ctypes", "zlib", "sqlite3"):
+        try:
+            importlib.import_module(module)
+        except ImportError as error:
+            raise ValueError("Required Python standard module missing: " + module +
+                             "; use a complete matching CPython installation") from error
 
 
 def pip_install(base, payload, tool, force_target=False):

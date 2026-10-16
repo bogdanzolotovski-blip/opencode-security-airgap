@@ -16,9 +16,11 @@ for key in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "SEMGREP_APP_TOKEN", "BC_
     env.pop(key, None)
 env.update({
     "SEMGREP_SEND_METRICS": "off", "SEMGREP_ENABLE_VERSION_CHECK": "0",
+    "OTEL_SDK_DISABLED": "true", "DO_NOT_TRACK": "1",
     "SEMGREP_SETTINGS_FILE": str(root / "semgrep-settings.yml"),
     "CHECKOV_SKIP_DOWNLOAD": "true", "DOWNLOAD_EXTERNAL_MODULES": "false",
     "BC_SKIP_MAPPING": "true", "BC_SKIP_PLATFORM_INTEGRATION": "true",
+    "AWS_EC2_METADATA_DISABLED": "true",
     "GRYPE_CHECK_FOR_APP_UPDATE": "false", "GRYPE_DB_AUTO_UPDATE": "false",
     "GRYPE_DB_VALIDATE_AGE": "false", "GRYPE_DB_REQUIRE_UPDATE_CHECK": "false",
     "GRYPE_DB_CACHE_DIR": str(root / "grype-db"),
@@ -34,6 +36,11 @@ if tool in ("semgrep", "checkov"):
 if tool in ("gitleaks", "grype", "git"):
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
     env["GIT_ALLOW_PROTOCOL"] = "file"
+    if tool == "grype" and len(args) > 1 and args[0] == "db":
+        if args[1] in ("update", "check", "list"):
+            raise SystemExit("Offline Grype: DB network operations disabled; transfer a new bundle")
+        if args[1] == "import" and (len(args) < 3 or not Path(args[2]).is_file()):
+            raise SystemExit("Offline Grype: db import requires a local archive")
     if tool == "grype" and args and args[0] not in ("version", "--version", "help", "--help", "db", "config", "completion"):
         if not any(a.startswith(("dir:", "sbom:", "file:")) or Path(a).exists() for a in args if not a.startswith("-")):
             raise SystemExit("Offline Grype: use dir:/path or sbom:/path; remote image lookup is disabled by policy")
@@ -87,6 +94,10 @@ if tool == "playwright":
     runpy.run_module("playwright", run_name="__main__")
 elif tool == "checkov":
     import warnings
+    def deny_checkov_network(event, arguments):
+        if event == "socket.getaddrinfo" or (event == "socket.connect" and isinstance(arguments[1], tuple)):
+            raise RuntimeError("Checkov network access disabled by offline policy")
+    sys.addaudithook(deny_checkov_network)
     from checkov.main import Checkov
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=SyntaxWarning)

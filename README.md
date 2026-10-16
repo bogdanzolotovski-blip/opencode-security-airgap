@@ -52,6 +52,7 @@ run's artifact is **not a verified Release**.
 Mandatory tests run in Debian 13 as UID 1000 with `--network none`, no system pip and
 no sudo. Both fresh venv and isolated `pip --target` modes are exercised. Browser
 sandbox remains enabled. Docker test harness allows namespace syscalls to test it;
+the ephemeral Ubuntu CI host also permits unprivileged user namespaces in AppArmor.
 an LXC host may need administrator-provided user-namespace/AppArmor support.
 
 Installer validates the archive's external SHA-256 before extraction and every
