@@ -34,6 +34,7 @@ env = os.environ.copy()
 env["PATH"] = str(PREFIX / "bin") + os.pathsep + env["PATH"]
 python = PREFIX / "bin/python3"
 subprocess.run([str(python), "-c", "import playwright.sync_api,requests,yaml,bs4; print('Python audit imports OK')"], check=True, env=env)
+subprocess.run([str(python), "-c", "import sys; assert not any(p.endswith(('site-packages','dist-packages')) for p in sys.path), sys.path; print('No global Python package paths in fallback')"], check=True, env=env)
 # This contract fixture tests PATH and subprocess wiring, not the user's real skill.
 with tempfile.TemporaryDirectory() as tmp:
     skill = Path(tmp) / "security-audit"

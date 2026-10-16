@@ -107,7 +107,7 @@ def install(args):
         bindir.mkdir()
         for tool in ("semgrep", "pysemgrep", "checkov", "gitleaks", "grype", "git", "python3", "playwright", "zap"):
             wrapper = bindir / tool
-            wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(config["base_python"]) + " -I " +
+            wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(config["base_python"]) + " -I -S " +
                                shlex.quote(str(generation / "launcher.py")) + " " + tool + ' "$@"\n')
             wrapper.chmod(0o755)
         for script in ("verify_tools.py", "diagnose_browser.py", "test_security_audit.py"):

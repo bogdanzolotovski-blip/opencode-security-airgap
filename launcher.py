@@ -60,13 +60,14 @@ if tool == "zap":
               "-config", "autoupdate.downloadNewAddons=false"] + args, env)
 group = "playwright" if tool == "python3" else "semgrep" if tool == "pysemgrep" else tool
 spec = cfg["environments"][group]
+python_flags = ["-I", "-S"] if spec["target"] else ["-I"]
 if group == "playwright":
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
     env["FONTCONFIG_FILE"] = str(root / "fontconfig.xml")
 if tool == "python3":
-    os.execve(spec["python"], [spec["python"], "-I", str(root / "python_entry.py")] + args, env)
+    os.execve(spec["python"], [spec["python"]] + python_flags + [str(root / "python_entry.py")] + args, env)
 if not child:
-    os.execve(spec["python"], [spec["python"], "-I", str(__file__), "__tool_child__", tool] + args, env)
+    os.execve(spec["python"], [spec["python"]] + python_flags + [str(__file__), "__tool_child__", tool] + args, env)
 os.environ.clear()
 os.environ.update(env)
 if spec["target"]:
