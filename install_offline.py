@@ -105,7 +105,7 @@ def install(args):
         shutil.copy2(payload / "python_entry.py", generation / "python_entry.py")
         bindir = generation / "bin"
         bindir.mkdir()
-        for tool in ("semgrep", "checkov", "gitleaks", "grype", "git", "python3", "playwright", "zap"):
+        for tool in ("semgrep", "pysemgrep", "checkov", "gitleaks", "grype", "git", "python3", "playwright", "zap"):
             wrapper = bindir / tool
             wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(config["base_python"]) + " -I " +
                                shlex.quote(str(generation / "launcher.py")) + " " + tool + ' "$@"\n')

@@ -10,6 +10,9 @@ root = Path(__file__).resolve().parent
 payload = root / "payload"
 cfg = json.loads((root / "installation.json").read_text())
 tool, *args = sys.argv[1:]
+child = tool == "__tool_child__"
+if child:
+    tool, *args = args
 env = os.environ.copy()
 env["PATH"] = str(root / "bin") + os.pathsep + env.get("PATH", "")
 for key in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "SEMGREP_APP_TOKEN", "BC_API_KEY", "PRISMA_API_URL"):
@@ -31,7 +34,7 @@ env.update({
     "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PYTHONNOUSERSITE": "1",
     "SECURITY_TOOLS_ROOT": str(root),
 })
-if tool in ("semgrep", "checkov"):
+if tool in ("semgrep", "pysemgrep", "checkov"):
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
 if tool in ("gitleaks", "grype", "git"):
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
@@ -55,21 +58,20 @@ if tool == "zap":
     os.execve(str(zaproot / "zap/zap.sh"), ["zap.sh", "-dir", str(prefix / "zap-state"),
               "-config", "autoupdate.checkOnStart=false", "-config", "autoupdate.downloadNewRelease=false",
               "-config", "autoupdate.downloadNewAddons=false"] + args, env)
-group = "playwright" if tool == "python3" else tool
+group = "playwright" if tool == "python3" else "semgrep" if tool == "pysemgrep" else tool
 spec = cfg["environments"][group]
 if group == "playwright":
     env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
     env["FONTCONFIG_FILE"] = str(root / "fontconfig.xml")
 if tool == "python3":
     os.execve(spec["python"], [spec["python"], "-I", str(root / "python_entry.py")] + args, env)
-if os.environ.get("AIRGAP_TOOL_CHILD") != group:
-    env["AIRGAP_TOOL_CHILD"] = group
-    os.execve(spec["python"], [spec["python"], "-I", str(__file__), tool] + args, env)
+if not child:
+    os.execve(spec["python"], [spec["python"], "-I", str(__file__), "__tool_child__", tool] + args, env)
 os.environ.clear()
 os.environ.update(env)
 if spec["target"]:
     sys.path.insert(0, spec["target"])
-if tool == "semgrep":
+if tool in ("semgrep", "pysemgrep"):
     # Registry aliases and URLs would trigger network access: reject them.
     for i, arg in enumerate(args):
         value = args[i + 1] if arg in ("--config", "-c") and i + 1 < len(args) else None
@@ -103,7 +105,10 @@ elif tool == "checkov":
         warnings.simplefilter("ignore", category=SyntaxWarning)
         sys.exit(Checkov().run())
 else:
-    distname = "semgrep" if tool == "semgrep" else "checkov"
+    distname = "semgrep"
+    # Explicit Python CLI avoids osemgrep's execvp(pysemgrep) PATH assumptions
+    # when no venv exists; analysis still uses the official native semgrep-core.
+    entry_name = "pysemgrep"
     entry = next(e for e in importlib.metadata.distribution(distname).entry_points
-                 if e.group == "console_scripts" and e.name == tool)
+                 if e.group == "console_scripts" and e.name == entry_name)
     sys.exit(entry.load()())
