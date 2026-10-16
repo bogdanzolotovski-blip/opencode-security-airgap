@@ -54,7 +54,7 @@ class InstallerSecurityTests(unittest.TestCase):
                 check_platform({"architecture": "amd64", "python_version": "3.13"})
 
     def test_wrong_python(self):
-        with patch.object(platform, "machine", return_value="x86_64"):
+        with patch.object(platform, "machine", return_value="x86_64"), patch.object(sys, "platform", "linux"):
             with self.assertRaisesRegex(ValueError, "Python mismatch"):
                 check_platform({"architecture": "amd64", "python_version": "0.0"})
 

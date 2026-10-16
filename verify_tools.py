@@ -34,11 +34,11 @@ def verify(root, browser=True):
         result = run([binaries / "checkov", "-f", fixture / "main.tf", "--framework", "terraform", "-o", "json"], expected=(0, 1))
         assert 'CKV' in result.stdout, "Checkov did not run local checks"
         # Gitleaks must find a synthetic fixture; this is not a real credential.
-        (fixture / "synthetic.txt").write_text('api_key = "' + 'AKIA' + 'A' * 16 + '"\n')
+        (fixture / "synthetic.txt").write_text('api_key = "' + 'AKIA' + 'Q7R9U2E5B6N8K4M3' + '"\n')
         result = run([binaries / "gitleaks", "dir", str(fixture), "--no-banner",
                       "--report-format", "json", "--report-path", str(fixture / "secrets.json")], expected=(0, 1))
         assert json.loads((fixture / "secrets.json").read_text()), "Gitleaks did not find synthetic secret"
-        dbarchive = root / "payload/data/grype-db.tar.gz"
+        dbarchive = next((root / "payload/data").glob("grype-db.tar.*"))
         run([binaries / "grype", "db", "import", dbarchive], timeout=300)
         run([binaries / "grype", "db", "status"])
         # Minimal CycloneDX SBOM exercises real DB lookup without package registries.

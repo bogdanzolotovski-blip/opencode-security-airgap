@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import urllib.request
+from urllib.parse import urljoin
 
 
 def prepare(binary, destination, download):
@@ -18,10 +19,11 @@ def prepare(binary, destination, download):
     if not entries:
         raise RuntimeError("No compatible Grype DB in listing: " + listing[:1000])
     item = sorted(entries, key=lambda x: x.get("built", ""), reverse=True)[0]
-    url = item["url"]
+    major = item.get("schemaVersion", "v6").split(".")[0]
+    url = item.get("url") or urljoin("https://grype.anchore.io/databases/" + major + "/", item["path"])
     if not url.startswith("https://"):
         raise RuntimeError("Refusing non-HTTPS Grype database")
-    archive = destination / "grype-db.tar.gz"
+    archive = destination / ("grype-db.tar.zst" if url.endswith(".zst") else "grype-db.tar.gz")
     checksum = item.get("checksum", "").removeprefix("sha256:")
     if len(checksum) != 64:
         raise RuntimeError("Grype DB listing has no SHA-256")

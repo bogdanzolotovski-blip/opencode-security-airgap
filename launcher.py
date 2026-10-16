@@ -11,6 +11,7 @@ payload = root / "payload"
 cfg = json.loads((root / "installation.json").read_text())
 tool, *args = sys.argv[1:]
 env = os.environ.copy()
+env["PATH"] = str(root / "bin") + os.pathsep + env.get("PATH", "")
 for key in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "SEMGREP_APP_TOKEN", "BC_API_KEY", "PRISMA_API_URL"):
     env.pop(key, None)
 env.update({
@@ -28,6 +29,8 @@ env.update({
     "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PYTHONNOUSERSITE": "1",
     "SECURITY_TOOLS_ROOT": str(root),
 })
+if tool in ("semgrep", "checkov"):
+    env["LD_LIBRARY_PATH"] = str(payload / "runtime/lib")
 if tool in ("gitleaks", "grype"):
     if tool == "grype" and args and args[0] not in ("version", "--version", "help", "--help", "db", "config", "completion"):
         if not any(a.startswith(("dir:", "sbom:", "file:")) or Path(a).exists() for a in args if not a.startswith("-")):
@@ -66,7 +69,10 @@ if tool == "semgrep":
             raise SystemExit("Offline Semgrep requires a local --config path")
     if not any(a in ("--version", "--help", "-h") for a in args):
         if not any(a in ("--config", "-c") or a.startswith("--config=") for a in args):
-            args = ["--config", str(payload / "rules")] + args
+            if args and args[0] == "scan":
+                args = ["scan", "--config", str(payload / "rules")] + args[1:]
+            else:
+                args = ["--config", str(payload / "rules")] + args
         args += ["--metrics=off", "--disable-version-check"]
 elif tool == "checkov" and not any(a in ("--version", "--help", "-h") for a in args):
     args += ["--config-file", str(payload / "configs/checkov.yaml"),

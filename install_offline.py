@@ -96,6 +96,13 @@ def install(args):
             shutil.copy2(payload / script, generation / script)
         subprocess.run([str(bindir / "python3"), str(generation / "verify_tools.py"),
                         "--root", str(generation)], check=True)
+        skill_report = subprocess.run([str(bindir / "python3"), str(generation / "test_security_audit.py"),
+                                       "--strict"], capture_output=True, text=True)
+        (generation / "skill-compatibility-report.txt").write_text(skill_report.stdout + skill_report.stderr)
+        if skill_report.returncode:
+            print("SKILL: requires local review; see", generation / "skill-compatibility-report.txt")
+        else:
+            print("SKILL: static import/PATH compatibility passed; live OpenCode audit still requires validation")
         # Activate only after every mandatory installed-tool check passed.
         link = prefix / (".current-" + uuid.uuid4().hex)
         link.symlink_to(generation, target_is_directory=True)

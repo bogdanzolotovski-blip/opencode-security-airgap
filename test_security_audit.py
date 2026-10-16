@@ -38,7 +38,7 @@ def inspect(skill, strict=False):
     missing = []
     for name in sorted(imports - sys.stdlib_module_names):
         # No imports of skill modules (avoid side effects); find_spec only for top-level imports.
-        result = subprocess.run([sys.executable, "-c", "import importlib.util,sys;sys.exit(importlib.util.find_spec(sys.argv[1]) is None)", name], capture_output=True)
+        result = subprocess.run([shutil.which("python3") or sys.executable, "-c", "import importlib.util,sys;sys.exit(importlib.util.find_spec(sys.argv[1]) is None)", name], capture_output=True)
         if result.returncode and not (skill / (name + ".py")).exists() and not (skill / name).is_dir():
             missing.append(name)
     absent = [tool for tool in tools if not shutil.which(tool)]
