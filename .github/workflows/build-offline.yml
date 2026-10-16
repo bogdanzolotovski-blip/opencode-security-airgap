@@ -50,6 +50,14 @@ jobs:
         run: |
           python3 scripts/verify_bundle.py dist/security-tools-debian13-amd64.tar.gz
           python3 -m unittest discover -s tests -p test_installer.py -v
+      - name: Free build-only disk before keeping two installed generations
+        env:
+          PYVER: ${{ inputs.python_version }}
+        run: |
+          docker run --rm -v "$PWD:/src" "python:${PYVER}-trixie" \
+            python -c "import shutil; shutil.rmtree('/src/build')"
+          if [ "$PYVER" = 3.13 ]; then docker image rm "python:${PYVER}-trixie"; fi
+          df -h /
       - name: Build clean Debian test image
         if: inputs.python_version == '3.13'
         run: docker build -f tests/Dockerfile -t security-tools-clean .
