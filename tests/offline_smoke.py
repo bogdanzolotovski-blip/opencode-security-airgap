@@ -25,7 +25,7 @@ before = (PREFIX / "current").resolve()
 first_modes = json.loads((before / "installation.json").read_text())["environments"]
 assert all(value["target"] is None for value in first_modes.values()), "Normal venv path was not exercised"
 # Reinstall through forced isolated --target fallback, retaining prior generation.
-subprocess.run(command + ["--force-target"], check=True)
+subprocess.run([str(PREFIX / "bin/python3")] + command[1:] + ["--force-target"], check=True)
 assert before.exists()
 assert (PREFIX / "current").resolve() != before
 second_modes = json.loads((PREFIX / "current/installation.json").read_text())["environments"]

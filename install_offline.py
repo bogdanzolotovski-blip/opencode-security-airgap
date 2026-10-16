@@ -14,6 +14,10 @@ import uuid
 
 from bundle_common import safe_extract, verify_archive_checksum, verify_tree
 
+# An activated bundle intentionally wraps sys.executable for audit subprocesses.
+# Always bootstrap from the real CPython, never from an older bundle wrapper.
+BASE_PYTHON = Path(getattr(sys, "_base_executable", sys.executable)).resolve()
+
 
 def check_platform(manifest):
     if sys.platform != "linux" or platform.machine() not in ("x86_64", "amd64"):
@@ -41,7 +45,7 @@ def check_platform(manifest):
 
 def pip_install(base, payload, tool, force_target=False):
     environment = base / "envs" / tool
-    envpython = Path(sys.executable).resolve()
+    envpython = BASE_PYTHON
     target = None
     if not force_target:
         try:
@@ -89,7 +93,7 @@ def install(args):
         check_platform(manifest)
         if manifest.get("kind") == "zap":
             return install_zap(prefix, generation, payload, manifest)
-        config = {"base_python": str(Path(sys.executable).resolve()), "environments": {}}
+        config = {"base_python": str(BASE_PYTHON), "environments": {}}
         for tool in ("semgrep", "checkov", "playwright"):
             config["environments"][tool] = pip_install(generation, payload, tool, args.force_target)
         (generation / "installation.json").write_text(json.dumps(config, indent=2))
