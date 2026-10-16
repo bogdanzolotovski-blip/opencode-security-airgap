@@ -112,7 +112,7 @@ def runtime_libraries(payload):
     libdir = payload / "runtime/lib"
     libdir.mkdir(parents=True)
     # Debian glibc is always provided by target OS. Never bundle its ABI/loader.
-    glibc = re.compile(r"^(ld-linux.*|libc\.so.*|libm\.so.*|libpthread\.so.*|librt\.so.*|libdl\.so.*|libresolv\.so.*|libutil\.so.*|libanl\.so.*)$")
+    glibc = re.compile(r"^(ld-linux.*|libc\.so.*|libm\.so.*|libmvec\..*|libnss_.*|libBrokenLocale\..*|libthread_db\..*|libpthread\.so.*|librt\.so.*|libdl\.so.*|libresolv\.so.*|libutil\.so.*|libanl\.so.*)$")
     pending = []
     for path in (payload / "browsers").rglob("*"):
         if path.is_file() and (path.stat().st_mode & 0o111 or ".so" in path.name):
@@ -161,7 +161,7 @@ def archive(payload, output, metadata):
     metadata["files"] = {p.relative_to(payload).as_posix(): sha256(p)
                          for p in sorted(payload.rglob("*")) if p.is_file() and p.name != "MANIFEST.json"}
     (payload / "MANIFEST.json").write_text(json.dumps(metadata, indent=2) + "\n")
-    with tarfile.open(output, "w:gz", dereference=True) as tar:
+    with tarfile.open(output, "w:gz", dereference=True, compresslevel=1) as tar:
         for path in sorted(payload.rglob("*")):
             if path.is_file():
                 tar.add(path, arcname=path.relative_to(payload).as_posix(), recursive=False)
@@ -262,6 +262,7 @@ def main():
     env = os.environ.copy()
     env["PLAYWRIGHT_BROWSERS_PATH"] = str(payload / "browsers")
     subprocess.run([str(python), "-m", "playwright", "install", "--with-deps", "chromium"], env=env, check=True)
+    subprocess.run(["apt-get", "install", "-y", "--no-install-recommends", "fonts-dejavu-core"], check=True)
     for path in (payload / "browsers").rglob("*"):
         if path.is_symlink():
             data = path.read_bytes()

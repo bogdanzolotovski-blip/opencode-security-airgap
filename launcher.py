@@ -85,6 +85,12 @@ elif tool == "playwright" and args and args[0] in ("install", "install-deps", "u
 sys.argv = [tool] + args
 if tool == "playwright":
     runpy.run_module("playwright", run_name="__main__")
+elif tool == "checkov":
+    import warnings
+    from checkov.main import Checkov
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=SyntaxWarning)
+        sys.exit(Checkov().run())
 else:
     distname = "semgrep" if tool == "semgrep" else "checkov"
     entry = next(e for e in importlib.metadata.distribution(distname).entry_points

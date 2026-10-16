@@ -6,7 +6,8 @@ RUN python3 -m pip uninstall -y pip \
     && printf 'extern int f(void); int main(void){return f();}\n' >/tmp/main.c \
     && gcc /tmp/main.c -L/tmp -lairgapmissing -o /opt/missing-so-fixture \
     && rm /tmp/libairgapmissing.so /tmp/missing.c /tmp/main.c \
-    && useradd -m -u 1000 tester
+    && useradd -m -u 1000 tester \
+    && rm -f /usr/bin/apt /usr/bin/apt-get
 ENV HOME=/home/tester PYTHONDONTWRITEBYTECODE=1
 USER tester
 WORKDIR /src

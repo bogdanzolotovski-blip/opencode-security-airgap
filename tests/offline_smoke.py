@@ -6,6 +6,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.request
+import http.server
+import threading
 
 ROOT = Path("/src")
 BUNDLE = ROOT / "dist/security-tools-debian13-amd64.tar.gz"
@@ -13,6 +17,7 @@ PREFIX = Path.home() / "security-tools"
 assert os.geteuid() != 0, "Must test without root"
 assert subprocess.run([sys.executable, "-m", "pip", "--version"], capture_output=True).returncode != 0, "System pip must be absent"
 assert shutil.which("sudo") is None, "sudo must be absent"
+assert shutil.which("apt") is None and shutil.which("apt-get") is None, "apt must be absent"
 subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "/src/tests", "-p", "test_installer.py", "-v"], cwd=ROOT, check=True)
 command = [sys.executable, str(ROOT / "install_offline.py"), "--bundle", str(BUNDLE)]
 subprocess.run(command, check=True)
@@ -48,6 +53,33 @@ zap = ROOT / "dist/security-zap-debian13-amd64.tar.gz"
 if zap.exists():
     subprocess.run([sys.executable, str(ROOT / "install_offline.py"), "--bundle", str(zap)], check=True)
     subprocess.run([str(PREFIX / "bin/zap"), "-version"], check=True, env=env, timeout=120)
+    # The only network used here is loopback inside --network none.
+    zaplog = open("/results/zap-offline.log", "w")
+    daemon = subprocess.Popen([str(PREFIX / "bin/zap"), "-daemon", "-host", "127.0.0.1", "-port", "19090",
+                               "-config", "api.disablekey=true"], env=env, stdout=zaplog, stderr=subprocess.STDOUT)
+    try:
+        info = None
+        for attempt in range(90):
+            if daemon.poll() is not None:
+                raise RuntimeError("ZAP daemon exited; see zap-offline.log")
+            try:
+                with urllib.request.urlopen("http://127.0.0.1:19090/JSON/core/view/version/", timeout=2) as response:
+                    info = json.load(response)
+                break
+            except OSError:
+                time.sleep(1)
+        assert info and "version" in info, "ZAP API did not start offline"
+        with urllib.request.urlopen("http://127.0.0.1:19090/JSON/pscan/view/scanners/", timeout=10) as response:
+            scanners = json.load(response)
+        assert scanners.get("scanners"), "Offline passive-scan addons not loaded"
+        print("ZAP loopback API + passive scanners: OK")
+    finally:
+        daemon.terminate()
+        try:
+            daemon.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            daemon.kill()
+        zaplog.close()
 result = {"status": "PASS", "network": "docker --network none", "root": False,
           "system_pip": False, "venv_and_target": True,
           "real_skill": "NOT_VERIFIED; synthetic contract tested only"}

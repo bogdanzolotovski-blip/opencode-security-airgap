@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 git gcc
     && rm /tmp/libairgapmissing.so /tmp/missing.c /tmp/main.c \
     && apt-get purge -y gcc libc6-dev && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -u 1000 tester
+    && useradd -m -u 1000 tester \
+    && rm -f /usr/bin/apt /usr/bin/apt-get
 ENV HOME=/home/tester PYTHONDONTWRITEBYTECODE=1
 USER tester
 WORKDIR /src
