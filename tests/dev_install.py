@@ -14,8 +14,12 @@ sys.path.insert(0, "/src")
 from bundle_common import safe_extract, verify_archive_checksum, verify_tree
 from install_offline import pip_install
 
-root = Path.home() / "debug-tools"
+force = "--force-target" in sys.argv
+root = Path.home() / ("debug-tools-target" if force else "debug-tools")
 payload = root / "payload"
+if force and not payload.exists():
+    root.mkdir(exist_ok=True)
+    payload.symlink_to(Path.home() / "debug-tools/payload", target_is_directory=True)
 if not payload.exists():
     verify_archive_checksum("/artifacts/security-tools-debian13-amd64.tar.gz")
     safe_extract("/artifacts/security-tools-debian13-amd64.tar.gz", payload)
@@ -27,11 +31,13 @@ if not (payload / "native/git").exists() and Path("/usr/bin/git").exists():
 if not (root / "installation.json").exists():
     config = {"base_python": sys.executable, "environments": {}}
     for tool in ("semgrep", "checkov", "playwright"):
-        config["environments"][tool] = pip_install(root, payload, tool)
+        config["environments"][tool] = pip_install(root, payload, tool, force)
     (root / "installation.json").write_text(json.dumps(config))
 (root / "bin").mkdir(exist_ok=True)
-for tool in ("semgrep", "checkov", "gitleaks", "grype", "git", "python3", "playwright"):
+for tool in ("semgrep", "pysemgrep", "checkov", "gitleaks", "grype", "git", "python3", "playwright"):
     path = root / "bin" / tool
     path.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " -I " + shlex.quote(str(root / "launcher.py")) + " " + tool + ' "$@"\n')
     path.chmod(0o755)
+if force:
+    shutil.copy2(Path.home() / "debug-tools/fontconfig.xml", root / "fontconfig.xml")
 subprocess.run([str(root / "bin/python3"), str(root / "verify_tools.py"), "--root", str(root)], check=True)
