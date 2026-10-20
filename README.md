@@ -1,5 +1,13 @@
 # OpenCode Security Airgap — Debian 13 amd64
 
+## Agent controls add-on
+
+Harness² core/offline demo, Numbat and LlamaFirewall are built independently by
+`Build offline agent controls`. See [Russian installation and configuration guide](AGENT_CONTROLS_RU.md).
+Download its **Agent controls** Release, not source archives. Gated PromptGuard
+weights and full cloud benchmark dependencies are not included; Numbat/OpenCode
+is observe-only, and real target integration requires local verification.
+
 Rootless offline toolkit for an existing OpenCode installation. No target-side
 apt, Docker, npm, sudo, system pip or network bootstrap. Python 3.13 by default.
 

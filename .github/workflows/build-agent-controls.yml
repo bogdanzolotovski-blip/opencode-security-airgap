@@ -1,0 +1,53 @@
+name: Build offline agent controls
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: agent-controls-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build wheels and official binaries in Debian Trixie
+        run: |
+          mkdir -p dist-agent-controls test-results-agent-controls
+          docker pull python:3.13-trixie
+          docker image inspect python:3.13-trixie --format '{{json .RepoDigests}}' > dist-agent-controls/build-image.json
+          docker run --rm -v "$PWD:/src" -w /src python:3.13-trixie python scripts/prepare_agent_controls.py
+      - name: Unit tests and plugin contracts
+        run: |
+          python3 -m unittest discover -s tests -p test_agent_controls.py -v
+          node --test tests/firewall_plugin.test.mjs
+      - name: Remove online build trees and image
+        run: |
+          docker run --rm -v "$PWD:/src" python:3.13-trixie python -c "import shutil;shutil.rmtree('/src/build')"
+          docker image rm python:3.13-trixie
+      - name: Clean Debian rootless test image (no pip/venv/apt/sudo)
+        run: docker build -f agent-controls/tests/Dockerfile -t agent-controls-clean .
+      - name: Test offline installation, scanners, hooks, reinstall and local harness demo
+        run: |
+          chmod 777 test-results-agent-controls
+          docker run --rm --network none -v "$PWD:/src:ro" -v "$PWD/test-results-agent-controls:/results" agent-controls-clean
+      - name: Artifacts (unverified when tests fail)
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: agent-controls-debian13-amd64-py313
+          path: |
+            dist-agent-controls/
+            test-results-agent-controls/
+          compression-level: 0
+          retention-days: 14
+      - name: Publish only after successful offline tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "agent-controls-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            dist-agent-controls/* test-results-agent-controls/offline-test.json \
+            --target "$GITHUB_SHA" --title "Agent controls: Debian 13 amd64 / Python 3.13" \
+            --notes-file agent-controls/RELEASE_NOTES.md

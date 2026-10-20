@@ -1,5 +1,7 @@
 build/
 dist/
+dist-agent-controls/
+test-results-agent-controls/
 __pycache__/
 *.pyc
 .venv/

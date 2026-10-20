@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "python_version": "3.13",
+  "architecture": "amd64",
+  "harness2_commit": "1cfe254e8d25b15f37048c3730134686abe60335",
+  "harness2_version": "0.1.0",
+  "numbat": "0.3.0",
+  "numbat_sha256": "bb5d32d53d71e9222ace0e9b072a32fec87f26d4a211fd557175d1a6e5413d1d",
+  "llamafirewall": "1.0.3",
+  "codeshield": "1.0.1",
+  "torch": "2.8.0+cpu",
+  "transformers": "4.57.1",
+  "semgrep": "1.181.0",
+  "pip": "26.2.1",
+  "setuptools": "80.9.0",
+  "wheel": "0.45.1",
+  "harness2_source_sha256": "2337f91b71a130e055d8dfb99ead2667a46087c29df939d4d4f0a3c357b5748f"
+}
