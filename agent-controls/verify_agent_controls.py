@@ -17,7 +17,7 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent)
     args = parser.parse_args()
     binary = args.root / "bin"
-    run([binary / "numbat", "--version"])
+    run([binary / "numbat", "version"])
     run([binary / "numbat", "rules", "list"])
     run([binary / "llamafirewall", "--help"])
     run([binary / "agent-controls-python", "-c", "import torch,transformers,codeshield; assert not torch.version.cuda; print(torch.__version__)"])

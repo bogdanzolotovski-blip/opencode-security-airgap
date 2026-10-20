@@ -1,6 +1,8 @@
 .git
 build
 dist
+dist-agent-controls
+test-results-agent-controls
 test-results
 __pycache__
 **/__pycache__

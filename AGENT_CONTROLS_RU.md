@@ -87,7 +87,7 @@ python3 install_agent_controls.py --bundle agent-controls-debian13-amd64-py313.t
 . "$HOME/agent-controls/activate.sh"
 umask 077
 mkdir -p "$HOME/.numbat"
-numbat --version
+numbat version
 numbat hook install --agent opencode --emit all --output file --output-file "$HOME/.numbat/live.ndjson"
 numbat hook status --agent opencode
 ```

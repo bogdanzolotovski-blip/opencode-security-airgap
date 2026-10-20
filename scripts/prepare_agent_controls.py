@@ -41,7 +41,7 @@ def torch_url(version):
         raise ValueError("Expected one official CPU torch cp313 wheel, got " + repr(matches))
     url = matches[0]
     parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname != "download.pytorch.org":
+    if parsed.scheme != "https" or parsed.hostname not in ("download.pytorch.org", "download-r2.pytorch.org"):
         raise ValueError("Unexpected torch publisher")
     digest = urllib.parse.parse_qs(parsed.fragment).get("sha256", [None])[0]
     if not digest or len(digest) != 64:
