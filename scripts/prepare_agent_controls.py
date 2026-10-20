@@ -7,6 +7,7 @@ from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -73,6 +74,39 @@ def lock_wheels(directory, special=None):
     return packages
 
 
+def runtime_libraries(payload):
+    """Small Debian runtime closure; never copy glibc or the ELF loader."""
+    destination = payload / "runtime/lib"
+    destination.mkdir(parents=True)
+    licenses = payload / "licenses/debian"
+    licenses.mkdir(parents=True)
+    names = ["libstdc++.so.6", "libgcc_s.so.1", "libgomp.so.1", "libgmp.so.10", "libz.so.1"]
+    forbidden = re.compile(r"^(ld-linux.*|libc\.so.*|libm\.so.*|libpthread\.so.*|librt\.so.*|libdl\.so.*)$")
+    copied, packages = set(), {}
+    while names:
+        name = names.pop()
+        if name in copied or forbidden.match(name):
+            continue
+        source = Path("/usr/lib/x86_64-linux-gnu") / name
+        if not source.is_file():
+            raise ValueError("Debian builder runtime library missing: " + name)
+        shutil.copy2(source, destination / name, follow_symlinks=True)
+        copied.add(name)
+        owners = subprocess.check_output(["dpkg-query", "-S", str(source.resolve())], text=True).splitlines()
+        for owner in owners:
+            package = owner.split(": /", 1)[0]
+            version = subprocess.check_output(["dpkg-query", "-W", "-f=${Version}", package], text=True)
+            packages[package] = version
+            doc = Path("/usr/share/doc") / package.split(":")[0] / "copyright"
+            if doc.exists():
+                shutil.copy2(doc, licenses / (package.replace(":", "_") + ".copyright"))
+        result = subprocess.run(["ldd", str(source)], capture_output=True, text=True)
+        if "not found" in result.stdout:
+            raise ValueError("Builder runtime dependency missing: " + result.stdout)
+        names.extend(re.findall(r"^\s*(\S+)\s+=>\s+/", result.stdout, re.M))
+    return {"libraries": sorted(copied), "debian_packages": packages}
+
+
 def main():
     if sys.platform != "linux" or sys.version_info[:2] != (3, 13):
         raise SystemExit("Build with official python:3.13-trixie, Linux amd64")
@@ -137,6 +171,7 @@ def main():
     licenses.mkdir()
     shutil.copytree(work / "numbat-unpack", licenses / "numbat", ignore=shutil.ignore_patterns("numbat"))
     shutil.copy2(work / "numbat-checksums.txt", licenses / "numbat-checksums.txt")
+    runtime = runtime_libraries(payload)
     for doc in ("README.md", "docs/agent-coverage.md", "docs/deployment.md", "docs/enforcement.md", "docs/cli.md", "LICENSE"):
         download(f"https://raw.githubusercontent.com/perplexityai/numbat/v{lock['numbat']}/" + doc,
                  sources / "numbat" / doc)
@@ -149,7 +184,7 @@ def main():
     assert "export function checkText" not in (payload / "plugins/airgap-firewall.js").read_text()
     manifest = {"schema": 1, "kind": "agent-controls", "architecture": "amd64", "python_version": "3.13",
                 "created_utc": datetime.now(timezone.utc).isoformat(), "versions": lock,
-                "packages": packages, "sources": ORIGINS,
+                "packages": packages, "runtime": runtime, "sources": ORIGINS,
                 "limitations": ["PromptGuard weights NOT included; gated Meta access required",
                                 "AlignmentCheck/cloud benchmark dependencies NOT included",
                                 "Numbat OpenCode integration is observe-only",

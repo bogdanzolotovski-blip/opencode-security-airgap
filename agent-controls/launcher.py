@@ -11,6 +11,9 @@ def main():
     root = Path(__file__).resolve().parent
     config = json.loads((root / "installation.json").read_text())
     tool = sys.argv.pop(1)
+    runtime = str(root / "payload/runtime/lib")
+    if runtime not in os.environ.get("LD_LIBRARY_PATH", "").split(os.pathsep):
+        os.environ["LD_LIBRARY_PATH"] = runtime + os.pathsep + os.environ.get("LD_LIBRARY_PATH", "")
     os.environ.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1",
                       HF_HUB_DISABLE_TELEMETRY="1", DO_NOT_TRACK="1",
                       SEMGREP_SEND_METRICS="off", SEMGREP_ENABLE_VERSION_CHECK="0",
